@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Entity
@@ -16,24 +17,26 @@ import java.util.List;
 @Getter
 @Setter
 
-public class Wallets {
+public class Wallet {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private double balance;
+    private String name;
+
+    private BigDecimal balance;
 
     @Enumerated(EnumType.STRING)
-    private Currencies currency;
+    private Currency currency;
 
     @ManyToOne()
     @JoinColumn(name = "client_id")
-    private Clients owner;
+    private Client owner;
 
     @OneToMany(mappedBy = "wallet")
-    private List<Categories> categoriesList;
+    private List<Category> categoriesList;
 
     @OneToMany(mappedBy = "wallet")
-    private List<Transactions> transactionsList;
+    private List<Transaction> transactionsList;
 }

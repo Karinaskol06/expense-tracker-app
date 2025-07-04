@@ -9,21 +9,25 @@ import lombok.Setter;
 import java.util.List;
 
 @Entity
-@Table(name = "labels")
+@Table (name = "users")
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
 
-public class Labels {
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String label;
+    private String username;
+    private String password;
 
-    @OneToMany(mappedBy = "label")
-    private List<Transactions> transactionsList;
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
+    private Client client;
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    private List<Roles> rolesList;
 }

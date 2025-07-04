@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -16,7 +17,7 @@ import java.time.LocalDate;
 @Getter
 @Setter
 
-public class Transactions {
+public class Transaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,20 +25,20 @@ public class Transactions {
 
     private LocalDate transactionDate;
     private String note;
-    private double amount;
+    private BigDecimal amount;
 
     @Enumerated(EnumType.STRING)
-    private Currencies currency;
+    private Currency currency;
 
     @ManyToOne()
     @JoinColumn(name = "category_id")
-    private Categories category;
+    private Category category;
 
     @ManyToOne()
     @JoinColumn(name = "label_id")
-    private Labels label;
+    private Label label;
 
     @ManyToOne()
     @JoinColumn(name = "wallet_id")
-    private Wallets wallet;
+    private Wallet wallet;
 }

@@ -16,7 +16,7 @@ import java.util.List;
 @Getter
 @Setter
 
-public class Categories {
+public class Category {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -28,13 +28,13 @@ public class Categories {
 
     //income or expense
     @Enumerated(EnumType.STRING)
-    private CategoryTypes type;
+    private CategoryType type;
 
     @OneToMany(mappedBy = "category")
-    private List<Transactions> transactionList;
+    private List<Transaction> transactionList;
 
     @ManyToOne()
     @JoinColumn(name = "wallet_id")
-    private Wallets wallet;
+    private Wallet wallet;
 
 }
