@@ -27,9 +27,6 @@ public class Transaction {
     private String note;
     private BigDecimal amount;
 
-    @Enumerated(EnumType.STRING)
-    private Currency currency;
-
     @ManyToOne()
     @JoinColumn(name = "category_id")
     private Category category;

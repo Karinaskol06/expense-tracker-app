@@ -11,10 +11,10 @@ public class TransactionMapper {
 
     public TransactionDTO toDTO(Transaction transaction) {
         TransactionDTO dto = new TransactionDTO();
+        dto.setId(transaction.getId());
         dto.setTransactionDate(transaction.getTransactionDate().toString());
         dto.setNote(transaction.getNote());
         dto.setAmount(transaction.getAmount());
-        dto.setCurrency(transaction.getCurrency().toString());
 
         if (transaction.getCategory() != null) {
             dto.setCategoryId(transaction.getCategory().getId());
@@ -33,15 +33,10 @@ public class TransactionMapper {
 
     public Transaction toEntity(TransactionDTO dto, Category category, Label label, Wallet wallet) {
         Transaction entity = new Transaction();
+        entity.setId(dto.getId());
         entity.setTransactionDate(LocalDate.parse(dto.getTransactionDate()));
         entity.setNote(dto.getNote());
         entity.setAmount(dto.getAmount());
-
-        try {
-            entity.setCurrency(Currency.valueOf(dto.getCurrency()));
-        } catch (IllegalArgumentException | NullPointerException e) {
-            throw new IllegalArgumentException("Invalid currency value: " + dto.getCurrency());
-        }
 
         entity.setCategory(category);
         entity.setLabel(label);

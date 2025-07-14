@@ -1,75 +1,91 @@
 package com.project.expense_tracker.Controller;
 
 import com.project.expense_tracker.DTO.TransactionDTO;
-import com.project.expense_tracker.Entity.*;
-import com.project.expense_tracker.Mapper.TransactionMapper;
-import com.project.expense_tracker.Service.CategoryService;
-import com.project.expense_tracker.Service.LabelService;
+import com.project.expense_tracker.Exceptions.ResourceNotFoundException;
 import com.project.expense_tracker.Service.TransactionService;
-import com.project.expense_tracker.Service.WalletService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/transactions")
 @CrossOrigin(origins = "http://localhost:8080")
+@RequiredArgsConstructor
 public class TransactionController {
 
     private final TransactionService transactionService;
-    private final CategoryService categoryService;
-    private final LabelService labelService;
-    private final WalletService walletService;
-    private final TransactionMapper transactionMapper;
 
-    public TransactionController(TransactionService transactionsService, CategoryService categoryService, LabelService labelService, WalletService walletService, TransactionMapper transactionMapper) {
-        this.transactionService = transactionsService;
-        this.categoryService = categoryService;
-        this.labelService = labelService;
-        this.walletService = walletService;
-        this.transactionMapper = transactionMapper;
+    //get all transactions (main page)
+    @GetMapping
+    public ResponseEntity<List<TransactionDTO>> getAllTransactions() {
+        List<TransactionDTO> transactions = transactionService.findAll();
+        return transactions.isEmpty()
+                ? ResponseEntity.noContent().build() //returns 204 No Content
+                : ResponseEntity.ok(transactions); //returns 200 OK and list of transactions
     }
 
-    //method for creation and updating
-    private TransactionDTO getTransactionDTO(@RequestBody TransactionDTO transactionDTO) {
-        if (transactionDTO == null) return null;
-        Category category = categoryService.findCategoryById(transactionDTO.getCategoryId());
-        Label label = labelService.findLabelById(transactionDTO.getLabelId());
-        Wallet wallet = walletService.findWalletById(transactionDTO.getWalletId());
-        Transaction transaction = transactionMapper.toEntity(transactionDTO, category, label, wallet);
-        Transaction savedTransaction = transactionService.save(transaction);
-        return transactionMapper.toDTO(savedTransaction);
+    //get transaction by id
+    @GetMapping("/{id}")
+    public ResponseEntity<TransactionDTO> getTransactionById(@PathVariable Long id) {
+        try{
+            TransactionDTO transactionDTO = transactionService.findById(id);
+            return ResponseEntity.ok(transactionDTO);
+        } catch (ResourceNotFoundException e) {
+            log.warn("Transaction not found with id {}", id);
+            return ResponseEntity.notFound().build();
+        }
     }
 
     //create a new transaction
-    @PostMapping("/create")
-    public TransactionDTO createNewTransaction (@RequestBody(required = true) TransactionDTO transactionDTO) {
-        return getTransactionDTO(transactionDTO);
+    @PostMapping
+    public ResponseEntity<TransactionDTO> createNewTransaction (@Valid @RequestBody TransactionDTO transactionDTO) {
+        try {
+            TransactionDTO createdDTO = transactionService.create(transactionDTO);
+            return ResponseEntity.ok(createdDTO);
+        } catch (ResourceNotFoundException e) {
+            log.warn("Related entity nor found: {}", e.getMessage());
+            return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            log.error("Error while creating transaction {}", e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
+
     }
 
-    @PutMapping("/update")
-    public TransactionDTO updateTransaction(@RequestBody TransactionDTO transactionDTO) {
-        return getTransactionDTO(transactionDTO);
+    //update an existing transaction
+    @PutMapping("/{id}")
+    public ResponseEntity<TransactionDTO> updateTransaction(
+            @PathVariable Long id,
+            @Valid @RequestBody TransactionDTO transactionDTO) {
+        try {
+            TransactionDTO updatedDTO = transactionService.update(id, transactionDTO);
+            return ResponseEntity.ok(updatedDTO);
+        } catch (ResourceNotFoundException e) {
+            log.warn("Transaction not found for update with id {}", id);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error while updating transaction with id {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
-    //receive a list of all transactions
-    @GetMapping("/all")
-    public List<TransactionDTO> getAllTransactions() {
-        List<Transaction> transactions = transactionService.findAll();
-        return transactions.stream()
-                .map(transactionMapper::toDTO)
-                .toList();
-    }
-
-    //receive transaction by id
-    @GetMapping("{transactionId}")
-    public TransactionDTO getTransactionById(@PathVariable Long transactionId) {
-        return transactionMapper.toDTO(transactionService.findById(transactionId));
-    }
-
-    @DeleteMapping("/delete/{transactionId}")
-    public void deleteTransaction(@PathVariable Long transactionId) {
-        transactionService.deleteById(transactionId);
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTransaction(@PathVariable Long id) {
+        try {
+            transactionService.deleteById(id);
+            return ResponseEntity.noContent().build();
+        } catch (ResourceNotFoundException e) {
+            log.warn("Transaction not found for deletion with id {}", id);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.error("Error while deleting transaction with id {}: {}", id, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
 }
