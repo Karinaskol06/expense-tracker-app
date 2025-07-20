@@ -33,8 +33,13 @@ public class Category {
     @OneToMany(mappedBy = "category")
     private List<Transaction> transactionList;
 
+//    @ManyToOne()
+//    @JoinColumn(name = "wallet_id")
+//    private Wallet wallet;
+
+   //categories belong to the user
     @ManyToOne()
-    @JoinColumn(name = "wallet_id")
-    private Wallet wallet;
+    @JoinColumn(name = "user_id")
+    private User user;
 
 }

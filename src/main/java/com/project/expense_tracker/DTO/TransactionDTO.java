@@ -8,6 +8,7 @@ import jakarta.validation.constraints.DecimalMin;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -17,7 +18,7 @@ public class TransactionDTO implements Serializable {
 
     @NotNull
     @PastOrPresent
-    private String transactionDate;
+    private LocalDate transactionDate;
 
     private String note;
 
@@ -26,6 +27,6 @@ public class TransactionDTO implements Serializable {
     private BigDecimal amount;
 
     private Long categoryId;
-    private Long labelId;
+//    private Long labelId;
     private Long walletId;
 }

@@ -34,8 +34,8 @@ public class Wallet {
     @JoinColumn(name = "client_id")
     private Client owner;
 
-    @OneToMany(mappedBy = "wallet")
-    private List<Category> categoriesList;
+//    @OneToMany(mappedBy = "wallet")
+//    private List<Category> categoriesList;
 
     @OneToMany(mappedBy = "wallet")
     private List<Transaction> transactionsList;

@@ -31,9 +31,9 @@ public class Transaction {
     @JoinColumn(name = "category_id")
     private Category category;
 
-    @ManyToOne()
-    @JoinColumn(name = "label_id")
-    private Label label;
+//    @ManyToOne()
+//    @JoinColumn(name = "label_id")
+//    private Label label;
 
     @ManyToOne()
     @JoinColumn(name = "wallet_id")

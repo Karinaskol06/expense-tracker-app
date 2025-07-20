@@ -30,4 +30,7 @@ public class User {
 
     @ManyToMany(fetch = FetchType.EAGER)
     private List<Roles> rolesList;
+
+    @OneToMany(mappedBy = "user")
+    private List<Category> categoriesList;
 }

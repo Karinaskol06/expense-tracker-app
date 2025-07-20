@@ -12,7 +12,7 @@ public class TransactionMapper {
     public TransactionDTO toDTO(Transaction transaction) {
         TransactionDTO dto = new TransactionDTO();
         dto.setId(transaction.getId());
-        dto.setTransactionDate(transaction.getTransactionDate().toString());
+        dto.setTransactionDate(LocalDate.parse(transaction.getTransactionDate().toString()));
         dto.setNote(transaction.getNote());
         dto.setAmount(transaction.getAmount());
 
@@ -20,9 +20,9 @@ public class TransactionMapper {
             dto.setCategoryId(transaction.getCategory().getId());
         }
 
-        if (transaction.getLabel() != null) {
-            dto.setLabelId(transaction.getLabel().getId());
-        }
+//        if (transaction.getLabel() != null) {
+//            dto.setLabelId(transaction.getLabel().getId());
+//        }
 
         if (transaction.getWallet() != null) {
             dto.setWalletId(transaction.getWallet().getId());
@@ -31,15 +31,15 @@ public class TransactionMapper {
         return dto;
     }
 
-    public Transaction toEntity(TransactionDTO dto, Category category, Label label, Wallet wallet) {
+    public Transaction toEntity(TransactionDTO dto, Category category, Wallet wallet) {
         Transaction entity = new Transaction();
         entity.setId(dto.getId());
-        entity.setTransactionDate(LocalDate.parse(dto.getTransactionDate()));
+        entity.setTransactionDate(dto.getTransactionDate());
         entity.setNote(dto.getNote());
         entity.setAmount(dto.getAmount());
 
         entity.setCategory(category);
-        entity.setLabel(label);
+//        entity.setLabel(label);
         entity.setWallet(wallet);
 
         return entity;
