@@ -51,7 +51,7 @@ public class TransactionService {
     public TransactionDTO findById(Long id, Long userId ) {
         //confirmation that transaction exists
         Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + id));
 
         //verify that user owns the wallet that contains transaction
         if (!transaction.getWallet().getOwner().getUser().getId().equals(userId)) {
@@ -82,7 +82,7 @@ public class TransactionService {
     public TransactionDTO update(Long id, TransactionDTO transactionDTO, Long userId) {
 
         Transaction transactionUpd = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + id));
 
         //verify that user owns the transaction
         if (!transactionUpd.getWallet().getOwner().getUser().getId().equals(userId)) {
@@ -147,16 +147,18 @@ public class TransactionService {
 
     public void deleteById(Long id, Long userId) {
         Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + id));
 
         if (!transaction.getWallet().getOwner().getUser().getId().equals(userId)) {
             throw new UnauthorizedException("You don't have access to this transaction");
         }
 
         //update wallet balance (reverse the transaction)
-        updateWalletBalance(transaction.getWallet(),
+        updateWalletBalance(
+                transaction.getWallet(),
                 transaction.getAmount().negate(),
-                transaction.getCategory().getType());
+                transaction.getCategory().getType()
+        );
 
         transactionRepository.deleteById(id);
     }
@@ -164,21 +166,24 @@ public class TransactionService {
     //get transactions by category for a user
     public List<TransactionDTO> findByCategoryAndUserId(Long categoryId, Long userId) {
         Category category = categoryService.findCategoryById(categoryId);
-        return transactionRepository.findByCategoryAndUserId(category, userId).stream()
+        return transactionRepository
+                .findByCategoryAndUserId(category, userId).stream()
                 .map(transactionMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     //get transactions by date range for a user
     public List<TransactionDTO> findByDateRangeAndUserId(LocalDate start, LocalDate end, Long userId) {
-        return transactionRepository.findByTransactionDateBetweenAndUserId(start, end, userId).stream()
+        return transactionRepository
+                .findByTransactionDateBetweenAndUserId(start, end, userId).stream()
                 .map(transactionMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
     //get transactions by date range for a wallet
     public List<TransactionDTO> findByDateRangeAndWalletId(LocalDate start, LocalDate end, Long walletId) {
-        return transactionRepository.findByTransactionDateBetweenAndWalletId(start, end, walletId).stream()
+        return transactionRepository
+                .findByTransactionDateBetweenAndWalletId(start, end, walletId).stream()
                 .map(transactionMapper::toDTO)
                 .collect(Collectors.toList());
     }
