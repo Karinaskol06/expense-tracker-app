@@ -1,14 +1,16 @@
 package com.project.expense_tracker.Security;
 
 import com.project.expense_tracker.Entity.User;
+import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
-import java.util.stream.Collectors;
+import java.util.Collections;
 
 //adapter for user entity (to interface that spring security understands)
+@Getter
 public class CustomUserDetails implements UserDetails {
 
     private final User user;
@@ -17,11 +19,17 @@ public class CustomUserDetails implements UserDetails {
         this.user = user;
     }
 
+    public Long getUserId() { return user.getId(); }
+
+    public String getEmail() { return user.getEmail(); }
+
+    public String getRole() { return user.getRole().getRoleName(); }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return user.getRolesList().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getRoleName()))
-                .collect(Collectors.toList());
+        return Collections.singletonList(
+                new SimpleGrantedAuthority(user.getRole().getRoleName())
+        );
     }
 
     @Override
@@ -34,7 +42,6 @@ public class CustomUserDetails implements UserDetails {
         return user.getUsername();
     }
 
-    //true if the account has not expired
     @Override
     public boolean isAccountNonExpired() { return true; }
 
@@ -48,6 +55,4 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() { return true; }
-
-    public Long getUserId() { return user.getId(); }
 }

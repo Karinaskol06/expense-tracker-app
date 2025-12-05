@@ -15,7 +15,7 @@
 //    }
 //
 ////    public Label findLabelById(Long id) {
-////        return labelRepository.findById(id)
+////        return labelRepository.getUserDTOById(id)
 ////                .orElseThrow(() ->
 ////                        new NoSuchElementException("No label found with id: " + id));
 ////    }

@@ -1,6 +1,7 @@
 package com.project.expense_tracker.Service;
 
 import com.project.expense_tracker.DTO.TransactionDTO;
+import com.project.expense_tracker.DTO.WalletStatisticsDTO;
 import com.project.expense_tracker.Entity.*;
 import com.project.expense_tracker.Exceptions.ResourceNotFoundException;
 import com.project.expense_tracker.Exceptions.UnauthorizedException;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -24,147 +26,99 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final TransactionMapper transactionMapper;
     private final CategoryService categoryService;
-//    private final LabelService labelService;
     private final WalletService walletService;
+    private final WalletBalanceService walletBalanceService;
     private final WalletRepository walletRepository;
+    private final UserService userService;
 
-    //get all the user's transactions from all wallets (rewritten)
+    //get all the user's transactions
     public List<TransactionDTO> findAllUserTransactions(Long userId) {
-        return transactionRepository.findByUserId(userId).stream()
+        return transactionRepository.findTransactionsByUserId(userId).stream()
                 .map(transactionMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
-    //find transactions by wallet id and user authorization (rewritten)
+    //find user transactions by wallet id
     public List<TransactionDTO> findUserTransactionsByWalletId(Long walletId, Long userId) {
-        //verify that user owns the wallet
-        if (!walletRepository.existsByIdAndOwner_User_Id(walletId, userId)) {
-            throw new UnauthorizedException("Wallet not found or you don't have access to it");
+        //verify user owns the wallet
+        if (!walletRepository.existsByIdAndOwnerId(walletId, userId)) {
+            throw new UnauthorizedException("Wallet not found or access denied");
         }
+        List<Transaction> transactions = transactionRepository.findTransactionsByWalletId(walletId);
+        List<TransactionDTO> transactionDTOs = new ArrayList<>(transactions.size());
 
-        return transactionRepository.findByWalletId(walletId).stream()
-                .map(transactionMapper::toDTO)
-                .collect(Collectors.toList());
+        for (Transaction transaction : transactions) {
+            transactionDTOs.add(transactionMapper.toDTO(transaction));
+        }
+        return transactionDTOs;
     }
 
-    //find transaction by id with user auth (rewritten)
-    public TransactionDTO findById(Long id, Long userId ) {
-        //confirmation that transaction exists
-        Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + id));
+    //find a single transaction
+    public TransactionDTO findById(Long transactionId, Long userId ) {
+        Transaction transaction = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + transactionId));
 
-        //verify that user owns the wallet that contains transaction
-        if (!transaction.getWallet().getOwner().getUser().getId().equals(userId)) {
-            throw new UnauthorizedException("You don't have access to this transaction.");
+        if (!transaction.getUser().getId().equals(userId)) {
+            throw new UnauthorizedException("User not found or access denied");
         }
         return transactionMapper.toDTO(transaction);
     }
 
-    //create new transaction with user auth (rewritten, no upd mathod)
+    @Transactional
     public TransactionDTO create(TransactionDTO transactionDTO, Long userId) {
-        //verify that user owns the wallet
+        User user = userService.getUserEntityById(userId);
         Wallet wallet = walletService.findWalletById(transactionDTO.getWalletId());
-        if (!wallet.getOwner().getUser().getId().equals(userId)) {
-            throw new UnauthorizedException("You don't have access to this wallet.");
-        }
+        validateWalletOwnership(wallet, userId);
 
         Category category = categoryService.findCategoryById(transactionDTO.getCategoryId());
 
-        Transaction transaction = transactionMapper.toEntity(transactionDTO, category, wallet);
-
-        updateWalletBalance(wallet, transaction.getAmount(), category.getType());
+        Transaction transaction = Transaction.builder()
+                .transactionDate(transactionDTO.getTransactionDate())
+                .note(transactionDTO.getNote())
+                .amount(transactionDTO.getAmount())
+                .category(category)
+                .wallet(wallet)
+                .user(user)
+                .build();
 
         Transaction saved = transactionRepository.save(transaction);
+        walletBalanceService.updateWalletBalanceAfterTransCreate(saved);
         return transactionMapper.toDTO(saved);
     }
 
-    //update transaction with user auth
-    public TransactionDTO update(Long id, TransactionDTO transactionDTO, Long userId) {
+    //update existing transaction
+    @Transactional
+    public TransactionDTO update(Long transactionId, TransactionDTO transactionDTO, Long userId) {
+        Transaction existingTransaction = getTransactionById(transactionId);
+        validateTransactionOwnership(existingTransaction, userId);
 
-        Transaction transactionUpd = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + id));
+        Wallet oldWallet = existingTransaction.getWallet();
+        BigDecimal oldAmount = existingTransaction.getAmount();
+        CategoryType oldType = existingTransaction.getCategory().getType();
 
-        //verify that user owns the transaction
-        if (!transactionUpd.getWallet().getOwner().getUser().getId().equals(userId)) {
-            throw new UnauthorizedException("You don't have access to this transaction.");
-        }
-        //get new entities
-        Category newCategory = categoryService.findCategoryById(transactionDTO.getCategoryId());
-        if (!newCategory.getUser().getId().equals(userId)) {
-            throw new UnauthorizedException("You don't have access to this category.");
-        }
+        updateTransactionDetails(existingTransaction, transactionDTO, userId);
+        Transaction updatedTrans = transactionRepository.save(existingTransaction);
 
-        //store old values for balance
-        BigDecimal oldAmount = transactionUpd.getAmount();
-        CategoryType oldType = transactionUpd.getCategory().getType();
-        Wallet wallet = transactionUpd.getWallet();
-
-        transactionUpd.setTransactionDate(transactionDTO.getTransactionDate());
-        transactionUpd.setNote(transactionDTO.getNote());
-        transactionUpd.setAmount(transactionDTO.getAmount());
-        transactionUpd.setCategory(newCategory);
-
-        updateWalletBalance(wallet, oldAmount, oldType, transactionDTO.getAmount(), newCategory.getType());
-
-        Transaction saved = transactionRepository.save(transactionUpd);
-        return transactionMapper.toDTO(saved);
-    }
-
-    //helper to update wallet balance for transaction updates (added)
-    public void updateWalletBalance(Wallet wallet, BigDecimal oldAmount, CategoryType oldType,
-                                    BigDecimal newAmount, CategoryType newType) {
-        BigDecimal currentBalance = wallet.getBalance();
-
-        //going back to the balance before done transaction
-        if (oldType == CategoryType.INCOME) {
-            currentBalance = currentBalance.subtract(oldAmount);
-        } else {
-            currentBalance = currentBalance.add(oldAmount);
-        }
-
-        //normally calculating new balance
-        if (newType == CategoryType.INCOME) {
-            currentBalance = currentBalance.add(newAmount);
-        } else {
-            currentBalance = currentBalance.subtract(newAmount);
-        }
-
-        wallet.setBalance(currentBalance);
-        walletRepository.save(wallet);
-    }
-
-    //helper for updating wallet balance after creation/deletion of transactions
-    public void updateWalletBalance(Wallet wallet, BigDecimal amount, CategoryType type){
-        BigDecimal currentBalance = wallet.getBalance();
-        if (type == CategoryType.INCOME) {
-            currentBalance = currentBalance.add(amount);
-        } else {
-            currentBalance = currentBalance.subtract(amount);
-        }
-        wallet.setBalance(currentBalance);
-        walletRepository.save(wallet);
-    }
-
-    public void deleteById(Long id, Long userId) {
-        Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + id));
-
-        if (!transaction.getWallet().getOwner().getUser().getId().equals(userId)) {
-            throw new UnauthorizedException("You don't have access to this transaction");
-        }
-
-        //update wallet balance (reverse the transaction)
-        updateWalletBalance(
-                transaction.getWallet(),
-                transaction.getAmount().negate(),
-                transaction.getCategory().getType()
+        walletBalanceService.updateWalletBalanceAfterTransUpdate(
+                oldWallet, oldAmount, oldType,
+                updatedTrans.getWallet(), updatedTrans.getAmount(), updatedTrans.getCategory().getType()
         );
 
-        transactionRepository.deleteById(id);
+        return transactionMapper.toDTO(updatedTrans);
     }
 
-    //get transactions by category for a user
-    public List<TransactionDTO> findByCategoryAndUserId(Long categoryId, Long userId) {
+    //delete transaction
+    @Transactional
+    public void deleteById(Long id, Long userId) {
+        Transaction transaction = getTransactionById(id);
+        validateTransactionOwnership(transaction, userId);
+
+        walletBalanceService.reverseWalletBalance(transaction);
+        transactionRepository.delete(transaction);
+    }
+
+    //get transactions by category
+    public List<TransactionDTO> findTransactionsByCategory(Long categoryId, Long userId) {
         Category category = categoryService.findCategoryById(categoryId);
         return transactionRepository
                 .findByCategoryAndUserId(category, userId).stream()
@@ -172,33 +126,79 @@ public class TransactionService {
                 .collect(Collectors.toList());
     }
 
-    //get transactions by date range for a user
-    public List<TransactionDTO> findByDateRangeAndUserId(LocalDate start, LocalDate end, Long userId) {
+    //get transactions by date range for user
+    public List<TransactionDTO> findTransactionsByDateRange(LocalDate start, LocalDate end, Long userId) {
+        validateDateRange(start, end);
+
         return transactionRepository
                 .findByTransactionDateBetweenAndUserId(start, end, userId).stream()
                 .map(transactionMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
-    //get transactions by date range for a wallet
+    //get transactions by date range for wallet
     public List<TransactionDTO> findByDateRangeAndWalletId(LocalDate start, LocalDate end, Long walletId) {
+        Wallet wallet = walletService.findWalletById(walletId);
+        validateWalletOwnership(wallet, wallet.getOwner().getId());
+        validateDateRange(start, end);
+
         return transactionRepository
                 .findByTransactionDateBetweenAndWalletId(start, end, walletId).stream()
                 .map(transactionMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
-//    public BigDecimal getBalance() {
-//        List<Transaction> transactions = transactionRepository.findAll();
-//        return transactions.stream()
-//                .map (t -> {
-//                    if (t.getCategory().getType() == CategoryType.INCOME){
-//                        return t.getAmount();
-//                    } else {
-//                        return t.getAmount().negate();
-//                    }
-//                })
-//                .reduce(BigDecimal.ZERO, BigDecimal::add);
-//    }
+    //get wallet statistics
+    //last written
+    public WalletStatisticsDTO getWalletStatistics(Long walletId, Long userId) {
+        validateWalletOwnership(walletService.findWalletById(walletId), userId);
+
+        return WalletStatisticsDTO.builder()
+                .totalTransactions(transactionRepository.countByWalletId(walletId))
+                .uniqueCategories(transactionRepository.countCategoriesByWalletId(walletId))
+                .totalIncome(transactionRepository.sumIncomeByWalletId(walletId))
+                .totalExpense(transactionRepository.sumExpenseByWalletId(walletId))
+                .build();
+    }
+
+
+    /* helper methods */
+    public void validateTransactionOwnership(Transaction transaction, Long userId) {
+        if (!transaction.getWallet().getOwner().getId().equals(userId)) {
+            throw new UnauthorizedException("You don't have access to this wallet.");
+        }
+    }
+
+    public void validateWalletOwnership(Wallet wallet, Long userId) {
+        if (!wallet.getOwner().getId().equals(userId)) {
+            throw new UnauthorizedException("You don't have access to this wallet.");
+        }
+    }
+
+    public void validateDateRange(LocalDate start, LocalDate end) {
+        if (!start.isBefore(end)) {
+            throw new IllegalArgumentException("Enter correct dates");
+        }
+    }
+
+    public void updateTransactionDetails(Transaction transaction, TransactionDTO transactionDTO, Long userId) {
+        if (!transaction.getWallet().getId().equals(transactionDTO.getWalletId())) {
+            Wallet newWallet = walletService.findWalletById(transactionDTO.getWalletId());
+            validateWalletOwnership(newWallet, userId);
+            transaction.setWallet(newWallet);
+        }
+        if (!transaction.getCategory().getId().equals(transactionDTO.getCategoryId())) {
+            Category newCategory = categoryService.findCategoryById(transactionDTO.getCategoryId());
+            transaction.setCategory(newCategory);
+        }
+        transaction.setAmount(transactionDTO.getAmount());
+        transaction.setNote(transactionDTO.getNote());
+        transaction.setTransactionDate(transactionDTO.getTransactionDate());
+    }
+
+    public Transaction getTransactionById(Long id) {
+        return transactionRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + id));
+    }
 
 }

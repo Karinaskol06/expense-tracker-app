@@ -4,6 +4,7 @@ import com.project.expense_tracker.DTO.TransactionDTO;
 import com.project.expense_tracker.Exceptions.ResourceNotFoundException;
 import com.project.expense_tracker.Exceptions.UnauthorizedException;
 import com.project.expense_tracker.Service.TransactionService;
+import com.project.expense_tracker.Service.WalletBalanceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

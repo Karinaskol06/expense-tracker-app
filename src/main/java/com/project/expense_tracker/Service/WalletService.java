@@ -102,7 +102,7 @@ public class WalletService {
 
     //check if wallet exists and belongs to user
     public boolean existsByIdAndUserId(Long walletId, Long userId) {
-        return walletRepository.existsByIdAndOwner_User_Id(walletId, userId);
+        return walletRepository.existsByIdAndOwnerId(walletId, userId);
     }
 
     //get wallet balance

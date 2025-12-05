@@ -1,11 +1,11 @@
 package com.project.expense_tracker.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+import org.springframework.security.core.GrantedAuthority;
 
+import java.io.Serializable;
 import java.util.List;
 
 @Entity
@@ -15,15 +15,23 @@ import java.util.List;
 @NoArgsConstructor
 @Getter
 @Setter
-
-public class Roles {
+@Builder
+public class Roles implements GrantedAuthority {
 
     @Id
     @GeneratedValue (strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(unique = true, nullable = false, length = 50)
     private String roleName;
 
     @ManyToMany(mappedBy = "rolesList")
+    @JsonIgnore
+    @ToString.Exclude
     private List<User> usersSet;
+
+    @Override
+    public String getAuthority() {
+        return this.roleName;
+    }
 }

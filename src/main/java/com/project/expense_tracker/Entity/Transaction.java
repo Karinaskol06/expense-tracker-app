@@ -1,10 +1,7 @@
 package com.project.expense_tracker.Entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -16,7 +13,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 @Getter
 @Setter
-
+@Builder
 public class Transaction {
 
     @Id
@@ -24,18 +21,26 @@ public class Transaction {
     private Long id;
 
     private LocalDate transactionDate;
+
+    @Column(length = 500)
     private String note;
+
+    @Column(precision = 10, scale = 2)
     private BigDecimal amount;
 
-    @ManyToOne()
-    @JoinColumn(name = "category_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
 //    @ManyToOne()
 //    @JoinColumn(name = "label_id")
 //    private Label label;
 
-    @ManyToOne()
-    @JoinColumn(name = "wallet_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "wallet_id", nullable = false)
     private Wallet wallet;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 }

@@ -31,11 +31,8 @@ public class Wallet {
     private Currency currency;
 
     @ManyToOne()
-    @JoinColumn(name = "client_id")
-    private Client owner;
-
-//    @OneToMany(mappedBy = "wallet")
-//    private List<Category> categoriesList;
+    @JoinColumn(name = "user_id")
+    private User owner;
 
     @OneToMany(mappedBy = "wallet")
     private List<Transaction> transactionsList;

@@ -10,31 +10,36 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
-    //transactions by wallet id
-    List<Transaction> findByWalletId(Long walletId);
+    List<Transaction> findTransactionsByWalletId(Long walletId);
 
-    //all user's transactions (from all the wallets)
-    @Query("SELECT t FROM Transaction t WHERE t.wallet.owner.id = :userId")
-    List<Transaction> findByUserId(@Param("userId") Long userId);
+    List<Transaction> findTransactionsByUserId(Long userId);
+
+    List<Transaction> findTransactiosByUserAndWallet(Long userId, Long walletId);
+
+    @Query("SELECT t FROM Transaction t WHERE t.id = :id AND t.user.id = :userId")
+    Optional<Transaction> findByIdAndUserId (@Param("id") Long id, @Param("userId") Long userId);
 
     //count transactions in a wallet
     @Query("SELECT COUNT(t) FROM Transaction t WHERE t.wallet.id = :walletId")
     int countByWalletId(@Param("walletId") Long walletId);
 
-    //count distinct (different) categories in a wallet
+    //count distinct categories in a wallet
     @Query("SELECT COUNT(DISTINCT t.category) FROM Transaction t WHERE t.wallet.id = :walletId")
     int countCategoriesByWalletId(@Param("walletId") Long walletId);
 
     //sum income for a wallet
-    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.wallet.id = :walletId AND t.amount > 0")
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.wallet.id = :walletId " +
+            "AND t.category.type = 'INCOME'")
     BigDecimal sumIncomeByWalletId(@Param("walletId") Long walletId);
 
     //sum expenses for a wallet
-    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.wallet.id = :walletId AND t.amount < 0")
+    @Query("SELECT COALESCE(SUM(t.amount), 0) FROM Transaction t WHERE t.wallet.id = :walletId " +
+            "AND t.category.type = 'EXPENSE'")
     BigDecimal sumExpenseByWalletId(@Param("walletId") Long walletId);
 
     //transactions by category for a user
