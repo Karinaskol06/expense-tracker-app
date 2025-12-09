@@ -1,5 +1,6 @@
 package com.project.expense_tracker.DTO;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Getter;
 import lombok.Setter;
 import jakarta.validation.constraints.NotNull;
@@ -18,6 +19,7 @@ public class TransactionDTO implements Serializable {
 
     @NotNull
     @PastOrPresent
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd.MM.yyyy")
     private LocalDate transactionDate;
 
     private String note;
@@ -27,6 +29,5 @@ public class TransactionDTO implements Serializable {
     private BigDecimal amount;
 
     private Long categoryId;
-//    private Long labelId;
     private Long walletId;
 }

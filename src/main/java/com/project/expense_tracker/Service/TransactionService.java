@@ -1,7 +1,7 @@
 package com.project.expense_tracker.Service;
 
 import com.project.expense_tracker.DTO.TransactionDTO;
-import com.project.expense_tracker.DTO.WalletStatisticsDTO;
+import com.project.expense_tracker.DTO.WalletDTO.WalletStatisticsDTO;
 import com.project.expense_tracker.Entity.*;
 import com.project.expense_tracker.Exceptions.ResourceNotFoundException;
 import com.project.expense_tracker.Exceptions.UnauthorizedException;
@@ -137,13 +137,13 @@ public class TransactionService {
     }
 
     //get transactions by date range for wallet
-    public List<TransactionDTO> findByDateRangeAndWalletId(LocalDate start, LocalDate end, Long walletId) {
+    public List<TransactionDTO> findByDateRangeAndWalletId(LocalDate start, LocalDate end, Long walletId, Long userId) {
         Wallet wallet = walletService.findWalletById(walletId);
         validateWalletOwnership(wallet, wallet.getOwner().getId());
         validateDateRange(start, end);
 
         return transactionRepository
-                .findByTransactionDateBetweenAndWalletId(start, end, walletId).stream()
+                .findByTransactionDateBetweenAndWalletId(start, end, walletId, userId).stream()
                 .map(transactionMapper::toDTO)
                 .collect(Collectors.toList());
     }

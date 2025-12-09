@@ -1,4 +1,4 @@
-package com.project.expense_tracker.DTO;
+package com.project.expense_tracker.DTO.AuthDTO;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;

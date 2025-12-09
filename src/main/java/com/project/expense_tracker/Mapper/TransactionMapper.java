@@ -20,10 +20,6 @@ public class TransactionMapper {
             dto.setCategoryId(transaction.getCategory().getId());
         }
 
-//        if (transaction.getLabel() != null) {
-//            dto.setLabelId(transaction.getLabel().getId());
-//        }
-
         if (transaction.getWallet() != null) {
             dto.setWalletId(transaction.getWallet().getId());
         }
@@ -39,7 +35,6 @@ public class TransactionMapper {
         entity.setAmount(dto.getAmount());
 
         entity.setCategory(category);
-//        entity.setLabel(label);
         entity.setWallet(wallet);
 
         return entity;

@@ -1,9 +1,9 @@
 package com.project.expense_tracker.Controller;
 
-import com.project.expense_tracker.DTO.LoginRequestDTO;
-import com.project.expense_tracker.DTO.LoginResponseDTO;
-import com.project.expense_tracker.DTO.RegisterRequestDTO;
-import com.project.expense_tracker.DTO.UserDTO;
+import com.project.expense_tracker.DTO.AuthDTO.LoginRequestDTO;
+import com.project.expense_tracker.DTO.AuthDTO.LoginResponseDTO;
+import com.project.expense_tracker.DTO.AuthDTO.RegisterRequestDTO;
+import com.project.expense_tracker.DTO.UserDTO.UserDTO;
 import com.project.expense_tracker.Security.CustomUserDetails;
 import com.project.expense_tracker.Service.JwtService;
 import com.project.expense_tracker.Service.UserService;

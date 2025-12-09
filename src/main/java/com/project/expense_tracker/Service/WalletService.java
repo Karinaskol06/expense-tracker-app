@@ -1,10 +1,11 @@
 package com.project.expense_tracker.Service;
 
 import com.project.expense_tracker.DTO.WalletDTO.WalletDTO;
-import com.project.expense_tracker.DTO.WalletDTO.WalletDetailsDTO;
-import com.project.expense_tracker.DTO.WalletStats;
+import com.project.expense_tracker.DTO.WalletDTO.WalletStatisticsDTO;
+import com.project.expense_tracker.Entity.User;
 import com.project.expense_tracker.Entity.Wallet;
 import com.project.expense_tracker.Exceptions.ResourceNotFoundException;
+import com.project.expense_tracker.Exceptions.UnauthorizedException;
 import com.project.expense_tracker.Mapper.WalletMapper;
 import com.project.expense_tracker.Repository.TransactionRepository;
 import com.project.expense_tracker.Repository.WalletRepository;
@@ -22,117 +23,118 @@ import java.util.stream.Collectors;
 public class WalletService {
 
     private final WalletRepository walletRepository;
-    private final TransactionRepository transactionRepository;
     private final WalletMapper walletMapper;
+    private final UserService userService;
+    private final TransactionRepository transactionRepository;
 
     //get all wallets that user possesses
     public List<WalletDTO> getWalletsByUserId(Long userId) {
-        return walletRepository.findByOwner_User_Id(userId).stream()
-                .map(walletMapper::toWalletDTO)
+        return walletRepository.findByOwnerId(userId).stream()
+                .map(walletMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
-    //find wallet by ID with user auth check
-    public WalletDTO findWalletByIdAndUserId(Long walletId, Long userId) {
-        Wallet wallet = walletRepository.findByIdAndOwner_User_Id(walletId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Wallet not found or you don't have access to it"));
-        return walletMapper.toWalletDTO(wallet);
+    //find wallet by ID (user)
+    public WalletDTO findWalletById(Long walletId, Long userId) {
+        Wallet wallet = validateWalletOwnership(walletId, userId);
+        return walletMapper.toDTO(wallet);
     }
 
-    //find wallet entity by id (for internal use)
+    //find wallet entity by id (admin or internal)
     public Wallet findWalletById(Long walletId){
         return walletRepository.findById(walletId)
                 .orElseThrow(() -> new ResourceNotFoundException("Wallet not found"));
     }
 
+    //helper method (+)
+    public WalletStatisticsDTO getWalletStats(Long walletId, Long userId) {
 
-    //get wallet with detailed information including statistics
-    public WalletDetailsDTO getWalletDetails(Long walletId, Long userId) {
-        //user has access to the wallet
-        Wallet wallet = walletRepository.findByIdAndOwner_User_Id(walletId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Wallet not found or you don't have access to it"));
-
-        //get wallet statistics with helper method
-        WalletStats stats = getWalletStats(walletId);
-
-        return walletMapper.toWalletDetailsDTO(wallet, stats);
-    }
-
-    //helper method
-    public WalletStats getWalletStats(Long walletId) {
+        validateWalletOwnership(walletId, userId);
         int categoryCount = transactionRepository.countCategoriesByWalletId(walletId);
         int transactionCount = transactionRepository.countByWalletId(walletId);
         BigDecimal totalIncome = transactionRepository.sumIncomeByWalletId(walletId);
         BigDecimal totalExpense = transactionRepository.sumExpenseByWalletId(walletId);
 
-        return WalletStats.create(categoryCount, transactionCount, totalIncome, totalExpense);
+        return WalletStatisticsDTO.builder()
+                .totalTransactions(transactionCount)
+                .totalExpense(totalExpense)
+                .totalIncome(totalIncome)
+                .uniqueCategories(categoryCount)
+                .build();
     }
 
     //create a new wallet
-    public WalletDTO createWallet(WalletDTO walletDTO) {
-        Wallet wallet = walletMapper.toEntity(walletDTO);
+    @Transactional
+    public WalletDTO createWallet(WalletDTO walletDTO, Long userId) {
+        User user = userService.getUserEntityById(userId);
+        Wallet wallet = Wallet.builder()
+                .owner(user)
+                .id(walletDTO.getId())
+                .name(walletDTO.getName())
+                .balance(walletDTO.getBalance())
+                .currency(walletDTO.getCurrency())
+                .build();
         Wallet savedWallet = walletRepository.save(wallet);
-        return walletMapper.toWalletDTO(savedWallet);
+        return walletMapper.toDTO(savedWallet);
     }
 
     //update an existing wallet
+    @Transactional
     public WalletDTO updateWallet(Long walletId, WalletDTO walletDTO, Long userId) {
-        Wallet wallet = walletRepository.findByIdAndOwner_User_Id(walletId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Wallet not found or you don't have access to it"));
-
+        Wallet wallet = validateWalletOwnership(walletId, userId);
         wallet.setName(walletDTO.getName());
         wallet.setCurrency(walletDTO.getCurrency());
 
         Wallet updatedWallet = walletRepository.save(wallet);
-        return walletMapper.toWalletDTO(updatedWallet);
+        return walletMapper.toDTO(updatedWallet);
     }
 
     //delete a wallet
+    @Transactional
     public void deleteWallet(Long walletId, Long userId) {
-        Wallet wallet = walletRepository.findByIdAndOwner_User_Id(walletId, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Wallet not found or you don't have access to it"));
+        Wallet wallet = validateWalletOwnership(walletId, userId);
 
+        transactionRepository.deleteByWalletId(walletId, userId);
         walletRepository.deleteById(walletId);
     }
 
     //get count of wallets for a user
-    public int getWalletCountByUserId(Long userId) {
+    public int getWalletsCountByUserId(Long userId) {
         return walletRepository.countByUserId(userId);
-    }
-
-    //check if wallet exists and belongs to user
-    public boolean existsByIdAndUserId(Long walletId, Long userId) {
-        return walletRepository.existsByIdAndOwnerId(walletId, userId);
-    }
-
-    //get wallet balance
-    public BigDecimal getWalletBalance(Long walletId, Long userId) {
-        BigDecimal totalIncome = transactionRepository.sumIncomeByWalletId(walletId);
-        BigDecimal totalExpenses = transactionRepository.sumExpenseByWalletId(walletId);
-        return totalIncome.add(totalExpenses);
     }
 
     //get total income for a wallet
     public BigDecimal getWalletTotalIncome(Long walletId, Long userId) {
-        return transactionRepository.sumIncomeByWalletId(walletId);
+        return walletRepository.sumIncomeByWalletId(walletId);
     }
 
     // Get total expenses for a wallet
     public BigDecimal getWalletTotalExpenses(Long walletId, Long userId) {
-        return transactionRepository.sumExpenseByWalletId(walletId);
+        return walletRepository.sumExpenseByWalletId(walletId);
     }
 
-    //get all wallets with their details for a user
-    public List<WalletDetailsDTO> getAllWalletDetails(Long userId) {
-        List<Wallet> wallets = walletRepository.findByOwner_User_Id(userId);
-
-        return wallets.stream()
-                .map(wallet -> {
-                    WalletStats stats = getWalletStats(wallet.getId());
-                    return walletMapper.toWalletDetailsDTO(wallet, stats);
-                })
-                .collect(Collectors.toList());
+    public BigDecimal calcNetBalanceFromTransactions(Long walletId, Long userId) {
+        validateWalletOwnership(walletId, userId);
+        BigDecimal income = walletRepository.sumIncomeByWalletId(walletId);
+        BigDecimal expenses = walletRepository.sumExpenseByWalletId(walletId);
+        return income.subtract(expenses);
     }
 
+    public BigDecimal calculateTotalWalletsBalance(List<WalletDTO> wallets) {
+        BigDecimal balance = BigDecimal.ZERO;
+        for (WalletDTO walletDTO : wallets) {
+            balance = balance.add(walletDTO.getBalance());
+        }
+        return balance;
+    }
 
+    /* helper methods */
+    public Wallet validateWalletOwnership(Long walletId, Long userId) {
+        Wallet wallet = walletRepository.findByIdAndOwnerId(walletId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Wallet not found or access denied"));
+        if (!wallet.getOwner().getId().equals(userId)) {
+            throw new UnauthorizedException("User not found or access denied");
+        }
+        return wallet;
+    }
 }

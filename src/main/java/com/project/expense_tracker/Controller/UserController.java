@@ -1,8 +1,8 @@
 package com.project.expense_tracker.Controller;
 
-import com.project.expense_tracker.DTO.ChangePasswordDTO;
-import com.project.expense_tracker.DTO.UpdateUserDTO;
-import com.project.expense_tracker.DTO.UserDTO;
+import com.project.expense_tracker.DTO.AuthDTO.ChangePasswordDTO;
+import com.project.expense_tracker.DTO.UserDTO.UpdateUserDTO;
+import com.project.expense_tracker.DTO.UserDTO.UserDTO;
 import com.project.expense_tracker.Security.CustomUserDetails;
 import com.project.expense_tracker.Service.UserService;
 import jakarta.validation.Valid;

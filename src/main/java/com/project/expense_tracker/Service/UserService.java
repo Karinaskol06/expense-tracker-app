@@ -1,9 +1,9 @@
 package com.project.expense_tracker.Service;
 
-import com.project.expense_tracker.DTO.ChangePasswordDTO;
-import com.project.expense_tracker.DTO.RegisterRequestDTO;
-import com.project.expense_tracker.DTO.UpdateUserDTO;
-import com.project.expense_tracker.DTO.UserDTO;
+import com.project.expense_tracker.DTO.AuthDTO.ChangePasswordDTO;
+import com.project.expense_tracker.DTO.AuthDTO.RegisterRequestDTO;
+import com.project.expense_tracker.DTO.UserDTO.UpdateUserDTO;
+import com.project.expense_tracker.DTO.UserDTO.UserDTO;
 import com.project.expense_tracker.Entity.Roles;
 import com.project.expense_tracker.Entity.User;
 import com.project.expense_tracker.Exceptions.ResourceNotFoundException;
@@ -44,11 +44,12 @@ public class UserService {
             throw new IllegalArgumentException("Email is already in use");
         }
 
-        Roles defaultRole = rolesRepository.findByRoleName("ROLE_USER").orElseThrow();
+        Roles defaultRole = rolesRepository.findByRoleName("USER").orElseThrow();
+        String hashedPass = passwordEncoder.encode(registerRequest.getPassword());
 
         User user = User.builder()
                 .username(registerRequest.getUsername())
-                .password(registerRequest.getPassword())
+                .password(hashedPass)
                 .email(registerRequest.getEmail())
                 .firstName(registerRequest.getFirstName())
                 .lastName(registerRequest.getLastName())
@@ -66,14 +67,14 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found" + userId));
 
-        if (updateUserDTO.getUsername() != null) {
+        if (updateUserDTO.getUsername() != null && !updateUserDTO.getUsername().equals(user.getUsername())) {
             if (userRepository.existsByUsername(updateUserDTO.getUsername())) {
                 throw new IllegalArgumentException("Username is already in use");
             }
             user.setUsername(updateUserDTO.getUsername());
         }
 
-        if (updateUserDTO.getUsername() != null) {
+        if (updateUserDTO.getEmail() != null && !updateUserDTO.getEmail().equals(user.getEmail())) {
             if (userRepository.existsByEmail(updateUserDTO.getEmail())) {
                 throw new IllegalArgumentException("Email is already in use");
             }
@@ -123,6 +124,12 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found" + id));
         return convertToDTO(user);
+    }
+
+    public Long getUserIdByUsername(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found" + username));
+        return user.getId();
     }
 
     public User getUserEntityById(Long id) {

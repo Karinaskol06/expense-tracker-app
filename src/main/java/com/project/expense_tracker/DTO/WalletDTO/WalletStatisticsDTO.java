@@ -1,13 +1,18 @@
-package com.project.expense_tracker.DTO;
+package com.project.expense_tracker.DTO.WalletDTO;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 
 @Builder
 @Data
-public class WalletStatisticsDTO {
+@NoArgsConstructor
+@AllArgsConstructor
+public class WalletStatisticsDTO implements Serializable {
     private int totalTransactions;
     private int uniqueCategories;
     private BigDecimal totalIncome;
@@ -16,4 +21,5 @@ public class WalletStatisticsDTO {
     public BigDecimal getNetBalance() {
         return totalIncome.subtract(totalExpense);
     }
+
 }

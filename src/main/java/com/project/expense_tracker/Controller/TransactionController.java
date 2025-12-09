@@ -1,159 +1,129 @@
 package com.project.expense_tracker.Controller;
 
 import com.project.expense_tracker.DTO.TransactionDTO;
-import com.project.expense_tracker.Exceptions.ResourceNotFoundException;
-import com.project.expense_tracker.Exceptions.UnauthorizedException;
+import com.project.expense_tracker.DTO.WalletDTO.WalletStatisticsDTO;
+import com.project.expense_tracker.Security.SecurityUtils;
 import com.project.expense_tracker.Service.TransactionService;
-import com.project.expense_tracker.Service.WalletBalanceService;
+import com.project.expense_tracker.Service.WalletService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tomcat.util.net.openssl.ciphers.Authentication;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Slf4j
+@Validated
 @RestController
 @RequestMapping("/api/transactions")
-@CrossOrigin(origins = "http://localhost:3000")
 @RequiredArgsConstructor
 public class TransactionController {
 
     private final TransactionService transactionService;
+    private final SecurityUtils securityUtils;
+    private final WalletService walletService;
 
-    //get all transactions for the authenticated user (rewritten)
+    //get all transactions for authenticated user
     @GetMapping
     public ResponseEntity<List<TransactionDTO>> getAllUserTransactions() {
-        try {
-            Long userId = getCurrentUserId();
-            List<TransactionDTO> transactions = transactionService.findAllUserTransactions(userId);
-
-            return transactions.isEmpty()
-                    ? ResponseEntity.noContent().build() //returns 204 No Content
-                    : ResponseEntity.ok(transactions); //returns 200 OK and list of transactions
-        } catch (Exception e) {
-            log.error("Error retrieving transactions for user {}: {}", getCurrentUserId(), e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-
+        Long userId = securityUtils.getCurrentUserId();
+        List<TransactionDTO> transactions = transactionService.findAllUserTransactions(userId);
+        return buildResponse(transactions);
     }
 
-    //get transactions by wallet id (rewritten)
+    //get transactions by wallet id
     @GetMapping("/wallet/{walletId}")
-    public ResponseEntity<List<TransactionDTO>> getTransactionsByWalletId(@PathVariable Long walletId) {
-        try {
-            Long userId = getCurrentUserId();
-            List<TransactionDTO> transactions = transactionService.findUserTransactionsByWalletId(walletId, userId);
-
-            return transactions.isEmpty()
-                    ? ResponseEntity.noContent().build()
-                    : ResponseEntity.ok(transactions);
-        } catch (UnauthorizedException e) {
-            log.warn("Unauthorized access to wallet {} by user {}", walletId, getCurrentUserId());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        } catch (Exception e) {
-            log.error("Error retrieving transactions for wallet {}: {}", walletId, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+    public ResponseEntity<List<TransactionDTO>> getTransactionsByWalletId(
+            @PathVariable @NotNull Long walletId) {
+        Long userId = securityUtils.getCurrentUserId();
+        List<TransactionDTO> transactions = transactionService.findUserTransactionsByWalletId(walletId, userId);
+        return buildResponse(transactions);
     }
 
-    //get one transaction by id (rewritten)
-    @GetMapping("/{id}")
-    public ResponseEntity<TransactionDTO> getTransactionById(@PathVariable Long id) {
-        try {
-            Long userId = getCurrentUserId();
-            TransactionDTO transactionDTO = transactionService.findById(id, userId);
-            return ResponseEntity.ok(transactionDTO);
-        } catch (ResourceNotFoundException e) {
-            log.warn("Transaction not fount with id {} for user {}", id, getCurrentUserId());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        } catch (UnauthorizedException e) {
-            log.warn("Unauthorized access to transaction {} by user {}", id, getCurrentUserId());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        } catch (Exception e) {
-            log.error("Error retrieving transaction with id {}: {}", id, e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+    //get one transaction by id
+    @GetMapping("/{transactionId}")
+    public ResponseEntity<TransactionDTO> getTransactionById(
+            @PathVariable @NotNull Long transactionId) {
+        Long userId = securityUtils.getCurrentUserId();
+        TransactionDTO transaction = transactionService.findById(transactionId, userId);
+        return ResponseEntity.ok(transaction);
     }
 
-    //create a new transaction (rewritten)
+    //create a new transaction
     @PostMapping
     public ResponseEntity<TransactionDTO> createTransaction(@Valid @RequestBody TransactionDTO transactionDTO) {
-        try {
-            Long userId = getCurrentUserId();
-            TransactionDTO createdTransaction = transactionService.create(transactionDTO, userId);
-            return ResponseEntity.status(HttpStatus.CREATED).body(createdTransaction);
-        } catch (ResourceNotFoundException e) {
-            log.warn("Related entity not found: {}", e.getMessage());
-            return ResponseEntity.badRequest().build();
-        } catch (UnauthorizedException e) {
-            log.warn("Unauthorized transaction creation attempt by user {}: {}", getCurrentUserId(), e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        } catch (Exception e) {
-            log.error("Error creating transaction: {}", e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
-
+        Long userId = securityUtils.getCurrentUserId();
+        TransactionDTO transaction = transactionService.create(transactionDTO, userId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(transaction);
     }
 
-    //update an existing transaction (rewritten)
-    @PutMapping("/{id}")
+    //update an existing transaction
+    @PutMapping("/{transactionId}")
     public ResponseEntity<TransactionDTO> updateTransaction(
-            @PathVariable Long id,
+            @PathVariable Long transactionId,
             @Valid @RequestBody TransactionDTO transactionDTO) {
-        try {
-            Long userId = getCurrentUserId();
-            TransactionDTO updatedTransaction = transactionService.update(id, transactionDTO, userId);
-            return ResponseEntity.ok(updatedTransaction);
-        } catch (ResourceNotFoundException e) {
-            log.warn("Transaction not found for update with id {} for user {}", id, getCurrentUserId());
-            return ResponseEntity.notFound().build();
-        } catch (UnauthorizedException e) {
-            log.warn("Unauthorized transaction update attempt by user {}: {}", getCurrentUserId(), e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        } catch (Exception e) {
-            log.error("Error while updating transaction with id {}: {}", id, e.getMessage());
-            return ResponseEntity.internalServerError().build();
-        }
+        Long userId = securityUtils.getCurrentUserId();
+        TransactionDTO updTransaction = transactionService.update(transactionId, transactionDTO, userId);
+        return ResponseEntity.ok(updTransaction);
     }
 
-    //delete the transaction (rewritten)
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteTransaction(@PathVariable Long id) {
-        try {
-            Long userId = getCurrentUserId();
-            transactionService.deleteById(id, userId);
+    //delete the transaction
+    @DeleteMapping("/{transactionId}")
+    public ResponseEntity<Void> deleteTransaction(@PathVariable Long transactionId) {
+        Long userId = securityUtils.getCurrentUserId();
+        transactionService.deleteById(transactionId, userId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/category/{categoryId}")
+    public ResponseEntity<List<TransactionDTO>> getTransactionsByCategory(
+            @PathVariable @NotNull Long categoryId) {
+        Long userId = securityUtils.getCurrentUserId();
+        List<TransactionDTO> transactions = transactionService.findTransactionsByCategory(categoryId, userId);
+        return buildResponse(transactions);
+    }
+
+    @GetMapping("/date-range")
+    public ResponseEntity<List<TransactionDTO>> getTransactionsByDateRange(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDate start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDate end) {
+        Long userId = securityUtils.getCurrentUserId();
+        List<TransactionDTO> transactions = transactionService.findTransactionsByDateRange(start, end, userId);
+        return buildResponse(transactions);
+    }
+
+    @GetMapping("/wallet/{walletId}/date-range")
+    public ResponseEntity<List<TransactionDTO>> getWalletTransactionsByDateRange(
+            @PathVariable Long walletId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate start,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate end){
+        Long userId = securityUtils.getCurrentUserId();
+        List<TransactionDTO> transactions = transactionService.findByDateRangeAndWalletId(start, end, walletId, userId);
+        return buildResponse(transactions);
+    }
+
+    @GetMapping("/wallet/{walletId}/statistics")
+    public ResponseEntity<WalletStatisticsDTO> getWalletStats(
+            @PathVariable @NotNull Long walletId) {
+        Long userId = securityUtils.getCurrentUserId();
+        WalletStatisticsDTO stats = walletService.getWalletStats(walletId, userId);
+        return ResponseEntity.ok(stats);
+    }
+
+    /* helper methods */
+    private <T> ResponseEntity<List<T>> buildResponse(List<T> data) {
+        if (data.isEmpty()) {
             return ResponseEntity.noContent().build();
-        } catch (ResourceNotFoundException e) {
-            log.warn("Transaction not found for deletion with id {} for user {}", id, getCurrentUserId());
-            return ResponseEntity.notFound().build();
-        } catch (UnauthorizedException e) {
-            log.warn("Unauthorized transaction deletion attempt by user {}: {}", getCurrentUserId(), e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        } catch (Exception e) {
-            log.error("Error while deleting transaction with id {}: {}", id, e.getMessage());
-            return ResponseEntity.internalServerError().build();
         }
+        return ResponseEntity.ok(data);
     }
 
 
-
-    //helper to get current user ID from security context
-    private Long getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("User not authenticated");
-        }
-
-        //implement user details
-        String username = authentication.getName();
-
-        //implement method to get id by username
-        return getUserIdByUsername(username);
-    }
 
 }

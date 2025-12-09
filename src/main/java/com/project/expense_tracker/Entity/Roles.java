@@ -25,7 +25,7 @@ public class Roles implements GrantedAuthority {
     @Column(unique = true, nullable = false, length = 50)
     private String roleName;
 
-    @ManyToMany(mappedBy = "rolesList")
+    @OneToMany(mappedBy = "role")
     @JsonIgnore
     @ToString.Exclude
     private List<User> usersSet;

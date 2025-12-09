@@ -1,4 +1,4 @@
-package com.project.expense_tracker.DTO;
+package com.project.expense_tracker.DTO.UserDTO;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;

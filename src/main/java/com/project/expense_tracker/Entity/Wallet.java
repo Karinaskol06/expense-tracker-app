@@ -1,10 +1,7 @@
 package com.project.expense_tracker.Entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -16,7 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 @Getter
 @Setter
-
+@Builder
 public class Wallet {
 
     @Id
@@ -34,6 +31,6 @@ public class Wallet {
     @JoinColumn(name = "user_id")
     private User owner;
 
-    @OneToMany(mappedBy = "wallet")
+    @OneToMany(mappedBy = "wallet", cascade = CascadeType.ALL)
     private List<Transaction> transactionsList;
 }

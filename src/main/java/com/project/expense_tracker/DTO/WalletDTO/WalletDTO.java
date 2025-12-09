@@ -19,5 +19,4 @@ public class WalletDTO implements Serializable {
     private BigDecimal balance;
     private Currency currency;
     private Long ownerId;
-    private String ownerName;
 }

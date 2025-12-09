@@ -1,4 +1,4 @@
-package com.project.expense_tracker.DTO;
+package com.project.expense_tracker.DTO.AuthDTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
