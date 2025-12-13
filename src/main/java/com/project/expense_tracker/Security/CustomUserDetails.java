@@ -23,13 +23,16 @@ public class CustomUserDetails implements UserDetails {
 
     public String getEmail() { return user.getEmail(); }
 
-    public String getRole() { return user.getRole().getRoleName(); }
+    public String getRole() {
+         String role = user.getRole().getRoleName();
+         return role.startsWith("ROLE_") ? role : "ROLE_" + role;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(
-                new SimpleGrantedAuthority(user.getRole().getRoleName())
-        );
+        String role = user.getRole().getRoleName();
+        String roleWithPrefix = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+        return Collections.singletonList(new SimpleGrantedAuthority(roleWithPrefix));
     }
 
     @Override

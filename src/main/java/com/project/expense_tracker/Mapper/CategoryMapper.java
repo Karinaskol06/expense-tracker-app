@@ -13,5 +13,6 @@ public class CategoryMapper {
         categoryDTO.setCategoryName(category.getCategoryName());
         categoryDTO.setCategoryType(category.getType());
         categoryDTO.setUserId(category.getUser().getId());
+        return categoryDTO;
     }
 }

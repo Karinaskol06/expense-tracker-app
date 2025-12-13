@@ -30,4 +30,5 @@ public class TransactionDTO implements Serializable {
 
     private Long categoryId;
     private Long walletId;
+
 }

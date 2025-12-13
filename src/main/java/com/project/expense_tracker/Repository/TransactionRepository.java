@@ -36,6 +36,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("DELETE FROM Transaction t WHERE t.wallet.id = :walletId AND t.user.id = :userId")
     void deleteByWalletId(@Param ("walletId") Long walletId, @Param("userId") Long userId);
 
+    @Modifying
+    @Query("UPDATE Transaction t SET t.category = NULL WHERE t.category.id = :categoryId AND t.user.id = :userId")
+    void updateCategoryToNull(@Param("categoryId") Long categoryId, @Param("userId") Long userId);
+
     //count distinct categories in a wallet
     @Query("SELECT COUNT(DISTINCT t.category) FROM Transaction t WHERE t.wallet.id = :walletId")
     int countCategoriesByWalletId(@Param("walletId") Long walletId);

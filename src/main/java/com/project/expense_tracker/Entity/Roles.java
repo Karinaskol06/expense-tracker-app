@@ -30,8 +30,12 @@ public class Roles implements GrantedAuthority {
     @ToString.Exclude
     private List<User> usersSet;
 
+    public String getRoleNameWithoutPrefix() {
+        return this.roleName;
+    }
+
     @Override
     public String getAuthority() {
-        return this.roleName;
+        return "ROLE_" + this.roleName;
     }
 }

@@ -82,7 +82,7 @@ public class TransactionService {
                 .build();
 
         Transaction saved = transactionRepository.save(transaction);
-        walletBalanceService.updateWalletBalanceAfterTransCreate(saved);
+        walletBalanceService.handleTransactionCreated(saved);
         return transactionMapper.toDTO(saved);
     }
 
@@ -94,15 +94,14 @@ public class TransactionService {
 
         Wallet oldWallet = existingTransaction.getWallet();
         BigDecimal oldAmount = existingTransaction.getAmount();
-        CategoryType oldType = existingTransaction.getCategory().getType();
+        CategoryType oldType = existingTransaction.getCategory().getType() != null ?
+                existingTransaction.getCategory().getType() : null;
 
+        Transaction oldTransaction = copyTransaction(existingTransaction);
         updateTransactionDetails(existingTransaction, transactionDTO, userId);
         Transaction updatedTrans = transactionRepository.save(existingTransaction);
 
-        walletBalanceService.updateWalletBalanceAfterTransUpdate(
-                oldWallet, oldAmount, oldType,
-                updatedTrans.getWallet(), updatedTrans.getAmount(), updatedTrans.getCategory().getType()
-        );
+        walletBalanceService.handleTransactionUpdated(oldTransaction, updatedTrans);
 
         return transactionMapper.toDTO(updatedTrans);
     }
@@ -113,7 +112,7 @@ public class TransactionService {
         Transaction transaction = getTransactionById(id);
         validateTransactionOwnership(transaction, userId);
 
-        walletBalanceService.reverseWalletBalance(transaction);
+        walletBalanceService.handleTransactionDeleted(transaction);
         transactionRepository.delete(transaction);
     }
 
@@ -199,6 +198,15 @@ public class TransactionService {
     public Transaction getTransactionById(Long id) {
         return transactionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Transaction not found with id: " + id));
+    }
+
+    private Transaction copyTransaction(Transaction original) {
+        return Transaction.builder()
+                .id(original.getId())
+                .amount(original.getAmount())
+                .category(original.getCategory())
+                .wallet(original.getWallet())
+                .build();
     }
 
 }
